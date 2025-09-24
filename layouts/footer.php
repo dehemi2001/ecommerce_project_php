@@ -53,7 +53,7 @@
           <img src="assets/imgs/payment.png">
         </div>
         <div class="col-lg-3 col-md-5 col-sm-12 mb-4">
-          <p>eCommerce @ 2025 All Right Reserved</p>
+          <p>© <?php echo date("Y"); ?> Dehemi Patabendige. All rights reserved.</p>
         </div>
         <div class="col-lg-3 col-md-5 col-sm-12 mb-4">
           <a href="https://www.facebook.com/people/SolidComputers-Negombo/100057675990991/"><i class="fab fa-facebook"></i></a>
