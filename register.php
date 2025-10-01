@@ -1,5 +1,9 @@
 <?php
 
+//Import PHPMailer classes into the global namespace
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+
 include('layouts/header.php');
 
 include('server/connection.php');
@@ -47,22 +51,54 @@ if (isset($_POST['register'])) {
       //create a new user
       $stmt = $conn->prepare("INSERT INTO users (user_name, user_email, user_password)
                 VALUES (?,?,?)");
-
-    $stmt->bind_param('sss', $name, $email, md5($password));
     
-    //if account was created successfully
-    if($stmt->execute()){
-      $user_id = $stmt->insert_id;
-      $_SESSION['user_id'] = $user_id;
-      $_SESSION['user_email'] = $email;
-      $_SESSION['user_name'] = $name;
-      $_SESSION['logged_in'] = true;
-      header('location: account.php?register_success=You registered successfully');
+      // Using password_hash for secure password storage
+      $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+      $verification_code = substr(md5(rand()), 0, 8); // Generate a random verification code
 
-      //account could not be created
-    }else{
-      header('location: register.php?error=could not create an account at the moment');
-    }
+      $stmt = $conn->prepare("INSERT INTO users (user_name, user_email, user_password, verification_code) VALUES (?, ?, ?, ?)");
+      $stmt->bind_param('ssss', $name, $email, $hashed_password, $verification_code);
+
+      //if account was created successfully
+      if ($stmt->execute()) {
+        // Send verification email
+        $stmt_admin = $conn->prepare("SELECT * FROM admins LIMIT 1");
+        $stmt_admin->execute();
+        $admin = $stmt_admin->get_result()->fetch_assoc();
+        $admin_email = $admin['admin_email'];
+        $app_password = $admin['app_password'];
+
+        require 'vendor/autoload.php';
+        $mail = new PHPMailer();
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';
+        $mail->Port = 465;
+        $mail->SMTPSecure = PHPMailer::ENCRYPTION_SMTPS;
+        $mail->SMTPAuth = true;
+        $mail->Username = $admin_email;
+        $mail->Password = $app_password;
+        $mail->setFrom($admin_email, 'Solid Computers');
+        $mail->addAddress($email);
+        $mail->Subject = 'Email Verification';
+        $mail->msgHTML("
+          <html><body>
+          <h2>Verify Your Email Address</h2>
+          <p>Thank you for registering. Please use the code below to verify your email address.</p>
+          <p><strong>Your verification code is:</strong> $verification_code</p>
+          <p>Best regards,<br>Solid Computers</p>
+          </body></html>
+        ");
+
+        if ($mail->send()) {
+          header('location: verify_email.php?message=Registration successful! Please check your email for the verification code.&email=' . urlencode($email));
+        } else {
+          // This part is tricky. The user is created, but email failed.
+          // For simplicity, we'll show a generic error. In a real-world app, you might want to log this.
+          header('location: register.php?error=Could not send verification email. Please contact support.');
+        }
+      } else {
+        header('location: register.php?error=Could not create an account at the moment');
+      }
     }
   }
 }
@@ -76,8 +112,11 @@ if (isset($_POST['register'])) {
     </div>
     <div class="mx-auto container">
       <form id="register-form" method="POST" action="register.php">
-        <p style="color: red;"><?php if (isset($_GET['error'])) {
+        <p style="color: red;" class="text-center"><?php if (isset($_GET['error'])) {
                                   echo $_GET['error'];
+                                } ?></p>
+        <p style="color: green;" class="text-center"><?php if (isset($_GET['message'])) {
+                                  echo $_GET['message'];
                                 } ?></p>
         <div class="form-group">
           <label>Name</label>

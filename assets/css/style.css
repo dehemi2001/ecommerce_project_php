@@ -524,6 +524,11 @@ th:last-child {
     color: #fff;
 }
 
+#verify-btn {
+    background-color: #fb774b;
+    color: #fff;
+}
+
 #login-form #register-url {
     color: #fb774b;
 }

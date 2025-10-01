@@ -1,0 +1,5 @@
+# Ignore database dumps
+php_project.sql
+
+# You might also want to ignore vendor directories for dependencies
+# vendor/

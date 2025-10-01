@@ -12,25 +12,33 @@ if(isset($_SESSION['logged_in'])){
 if(isset($_POST['login_btn'])){
 
   $email = $_POST['email'];
-  $password = md5($_POST['password']);
+  $password = $_POST['password'];
 
-  $stmt = $conn->prepare("SELECT user_id, user_name, user_email, user_password FROM users WHERE user_email=? AND user_password = ? LIMIT 1");
+  $stmt = $conn->prepare("SELECT user_id, user_name, user_email, user_password, is_verified FROM users WHERE user_email=? LIMIT 1");
 
-  $stmt->bind_param('ss', $email, $password);
+  $stmt->bind_param('s', $email);
 
   if($stmt->execute()){
-    $stmt->bind_result($user_id, $user_name, $user_email, $user_password);
+    $stmt->bind_result($user_id, $user_name, $user_email, $user_password, $is_verified);
     $stmt->store_result();
 
     if($stmt->num_rows() == 1){
       $stmt->fetch();
 
-      $_SESSION['user_id'] = $user_id;
-      $_SESSION['user_name'] = $user_name;
-      $_SESSION['user_email'] = $user_email;
-      $_SESSION['logged_in'] = true;
-
-      header('Location: account.php?login_success=logged in successfully');
+      // Verify password and check if account is verified
+      if (password_verify($password, $user_password)) {
+        if ($is_verified == 1) {
+          $_SESSION['user_id'] = $user_id;
+          $_SESSION['user_name'] = $user_name;
+          $_SESSION['user_email'] = $user_email;
+          $_SESSION['logged_in'] = true;
+          header('Location: account.php?login_success=logged in successfully');
+        } else {
+          header('Location: verify_email.php?error=Please verify your email first.&email=' . urlencode($email));
+        }
+      } else {
+        header('Location: login.php?error=Incorrect email or password');
+      }
     }else{
       header('Location: login.php?error=could not verify your account');
     }
